@@ -1,20 +1,54 @@
 #include <ncurses.h>
 
 typedef struct {
-  int x;
-  int y;
+  int x, y;
+  int vx, vy;
 } ball_t;
 
 typedef struct {
-  int x;
+  const int x;
   int y;
-  int len;
+  const int len;
 } paddle_t;
 
 typedef struct {
   int left_score;
   int right_score;
 } score_t;
+
+void move_ball(int row, int col, ball_t *ball, const paddle_t *lp, const paddle_t *rp, score_t *score) {
+  if (ball->x < 0) {
+    // right player scored
+    score->right_score++;
+
+    ball->x = col / 2,
+    ball->y = row / 2,
+    ball->vx = 1;
+    ball->vy = 1;
+  } else if (ball->x > col) {
+    // left player scored
+    score->left_score++;
+
+    ball->x = col / 2,
+    ball->y = row / 2,
+    ball->vx = 1;
+    ball->vy = 1;
+  }
+
+  if (ball->y + ball->vy <= 0 || ball->y + ball->vy >= row) {
+    ball->vy *= -1;
+  }
+
+  // collision with paddles
+  if ((ball->x + ball->vx == lp->x && ball->y + ball->vy - lp->y >= 0 && ball->y + ball->vy - lp->y < lp->len) ||
+      (ball->x + ball->vx == rp->x && ball->y + ball->vy - rp->y >= 0 && ball->y + ball->vy - rp->y < rp->len)) {
+    ball->vx *= -1;
+  }
+
+  // update ball's position
+  ball->x += ball->vx;
+  ball->y += ball->vy;
+}
 
 void draw_ball(const ball_t* b) {
   mvaddch(b->y, b->x, '0');
@@ -33,7 +67,9 @@ void draw_score(int row, int col, const score_t *score) {
 int main() {
   // intialize screen
   initscr();
+  cbreak();
   noecho();
+  timeout(50); // for getch
   curs_set(0);
   keypad(stdscr, TRUE);
 
@@ -42,18 +78,23 @@ int main() {
   getmaxyx(stdscr,row,col);
 
   // initialize ball, paddles, and score
-  ball_t ball = {0};
-  ball.x = col / 2;
-  ball.y = row / 2;
+  ball_t ball = {
+    .x = col / 2,
+    .y = row / 2,
+    .vx = 1,
+    .vy = 1,
+  };
 
-  paddle_t left_paddle = {0};
-  left_paddle.len = 8;
-  left_paddle.x = 1;
+  paddle_t left_paddle = {
+    .len = 7,
+    .x = 1,
+  };
   left_paddle.y = row / 2 - left_paddle.len / 2;
 
-  paddle_t right_paddle = {0};
-  right_paddle.len = 8;
-  right_paddle.x = col - 1;
+  paddle_t right_paddle = {
+    .len = 7,
+    .x = col - 1,
+  };
   right_paddle.y = row / 2 - right_paddle.len / 2;
 
   score_t score = {0};
@@ -68,6 +109,7 @@ int main() {
     draw_paddle(&left_paddle);
     draw_paddle(&right_paddle);
     draw_score(row, col, &score);
+    move_ball(row, col, &ball, &left_paddle, &right_paddle, &score);
 
     // get input
     keypress = getch();
@@ -84,6 +126,7 @@ int main() {
         if (left_paddle.y + left_paddle.len < row) {
           left_paddle.y++;
         }
+        break;
       case 259: // right paddle up
         if (right_paddle.y > 0) {
           right_paddle.y--;
@@ -94,11 +137,7 @@ int main() {
           right_paddle.y++;
         }
         break;
-        break;
-
-
     }
-    printw("%d", keypress);
 
     refresh();
   }
