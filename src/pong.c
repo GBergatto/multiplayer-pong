@@ -60,7 +60,7 @@ void draw_paddle(const paddle_t *paddle) {
   }
 }
 
-void draw_score(int row, int col, const score_t *score) {
+void draw_score(int col, const score_t *score) {
 	mvprintw(0, col / 2, "%d ? %d", score->left_score, score->right_score);
 }
 
@@ -108,7 +108,7 @@ int main() {
     draw_ball(&ball);
     draw_paddle(&left_paddle);
     draw_paddle(&right_paddle);
-    draw_score(row, col, &score);
+    draw_score(col, &score);
     move_ball(row, col, &ball, &left_paddle, &right_paddle, &score);
 
     // get input
