@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -Iinclude
+CFLAGS = -Wall -Wextra -std=gnu11 -Iinclude
 LDFLAGS = -lncurses
 
 SRC_DIR = src
