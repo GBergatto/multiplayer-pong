@@ -2,19 +2,83 @@
 #include <pthread.h>
 
 #include "../include/game_logic.h"
+#include "../include/networking.h"
 
-int main() {
+int show_menu(char** options, int n) {
+  int selected = 0;
+
+  mvprintw(1, 5, " _____                  ");
+  mvprintw(2, 5, "|  __ \\                 ");
+  mvprintw(3, 5, "| |__) |__  _ __   __ _ ");
+  mvprintw(4, 5, "|  ___/ _ \\| '_ \\ / _` |");
+  mvprintw(5, 5, "| |  | (_) | | | | (_| |");
+  mvprintw(6, 5, "|_|   \\___/|_| |_|\\__, |");
+  mvprintw(7, 5, "                   __/ |");
+  mvprintw(8, 5, "                  |___/ ");
+
+  while (1) {
+    for (int i = 0; i < n; i++) {
+      if (i == selected) {
+        attron(A_REVERSE);
+      }
+      mvprintw(10 + i, 5, "%s", options[i]);
+      attroff(A_REVERSE);
+    }
+    refresh();
+
+    int key = getch();
+    switch (key) {
+      case KEY_UP:
+      case 'k':
+        selected = (selected - 1 + n) % n;
+        break;
+      case KEY_DOWN:
+      case 'j':
+        selected = (selected + 1) % n;
+        break;
+      case '\n':
+        return selected;
+    }
+  }
+}
+
+int main(int argc, char *argv[]) {
+  int row, col;
+  pthread_t network_thread;
+
   // intialize screen
   initscr();
-  cbreak();
-  noecho();
-  timeout(50); // for getch
   curs_set(0);
   keypad(stdscr, TRUE);
 
   // get size of the screen
-  int row, col;
   getmaxyx(stdscr,row,col);
+
+  // menu
+  char *options[] = { "Host Game", "Join Game", "Exit" };
+  int n_options = sizeof(options) / sizeof(options[0]);
+  switch (show_menu(options, n_options)) {
+    case 0: // spawn server
+      pthread_create(&network_thread, NULL, server_init, NULL);
+      pthread_detach(network_thread);
+      break;
+    case 1: // spawn client
+      echo();
+      char ip[16];
+      mvprintw(10, 10, "Enter server IP: ");
+      getnstr(ip, 15);
+      // TODO: pass IP address to client thread
+      pthread_create(&network_thread, NULL, client_init, NULL);
+      pthread_detach(network_thread);
+      break;
+    case 2:
+      endwin();
+      return 0;
+  }
+
+  noecho();
+  cbreak();
+  timeout(50); // for getch
 
   // initialize ball, paddles, and score
   ball_t ball = {
@@ -66,12 +130,12 @@ int main() {
           left_paddle.y++;
         }
         break;
-      case 259: // right paddle up
+      case KEY_UP: // right paddle up
         if (right_paddle.y > 0) {
           right_paddle.y--;
         }
         break;
-      case 258: // right paddle down
+      case KEY_DOWN: // right paddle down
         if (right_paddle.y + right_paddle.len < row) {
           right_paddle.y++;
         }
