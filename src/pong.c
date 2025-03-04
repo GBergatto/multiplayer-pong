@@ -1,8 +1,11 @@
 #include <ncurses.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 #include "../include/game_logic.h"
 #include "../include/networking.h"
+
+sem_t handshake_sem;
 
 int show_menu(char** options, int n) {
   int selected = 0;
@@ -54,6 +57,8 @@ int main(int argc, char *argv[]) {
   // get size of the screen
   getmaxyx(stdscr,row,col);
 
+  sem_init(&handshake_sem, 0, 0);
+
   // menu
   char *options[] = { "Host Game", "Join Game", "Exit" };
   int n_options = sizeof(options) / sizeof(options[0]);
@@ -65,16 +70,20 @@ int main(int argc, char *argv[]) {
     case 1: // spawn client
       echo();
       char ip[16];
-      mvprintw(10, 10, "Enter server IP: ");
+      mvprintw(11, 10, "Enter server IP: ");
       getnstr(ip, 15);
-      // TODO: pass IP address to client thread
-      pthread_create(&network_thread, NULL, client_init, NULL);
+      // TODO: validate input
+
+      pthread_create(&network_thread, NULL, client_init, ip);
       pthread_detach(network_thread);
       break;
     case 2:
       endwin();
       return 0;
   }
+
+  // wait for client/server connection
+  sem_wait(&handshake_sem);
 
   noecho();
   cbreak();
